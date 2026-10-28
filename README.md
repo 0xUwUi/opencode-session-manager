@@ -28,7 +28,7 @@ To pin a version:
 
 ```json
 {
-  "plugins": ["@0xuwui/opencode-session-manager@0.1.0"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.1"]
 }
 ```
 
@@ -38,6 +38,9 @@ Save the file and restart the OpenCode TUI.
 
 ```sh
 git clone <REPO_URL> ~/opencode-plugins/session-manager
+cd ~/opencode-plugins/session-manager
+npm install
+npm run build
 ```
 
 Then add the absolute path of the plugin directory to `plugins` in `cli.json`:
@@ -112,6 +115,7 @@ The slash command and the command palette (Ctrl+P) entry always use English.
 npm install
 npm test           # unit tests
 npm run typecheck  # type check
+npm run build      # compile src/ into dist/, which the plugin loads
 ```
 
 Layout:

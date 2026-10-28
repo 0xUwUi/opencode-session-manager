@@ -28,7 +28,7 @@ OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，�
 
 ```json
 {
-  "plugins": ["@0xuwui/opencode-session-manager@0.1.0"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.1"]
 }
 ```
 
@@ -38,6 +38,9 @@ OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，�
 
 ```sh
 git clone <REPO_URL> ~/opencode-plugins/session-manager
+cd ~/opencode-plugins/session-manager
+npm install
+npm run build
 ```
 
 然后在 `cli.json` 里写插件目录的绝对路径：
@@ -112,6 +115,7 @@ git clone <REPO_URL> ~/opencode-plugins/session-manager
 npm install
 npm test           # 单元测试
 npm run typecheck  # 类型检查
+npm run build      # 把 src/ 编译到 dist/，插件实际加载的是 dist/
 ```
 
 目录结构：
