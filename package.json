@@ -1,16 +1,26 @@
 {
-  "name": "opencode-session-manager",
+  "name": "@0xuwui/opencode-session-manager",
   "version": "0.1.0",
   "description": "OpenCode TUI plugin for browsing, grouping, renaming and deleting sessions",
   "type": "module",
   "license": "MIT",
+  "author": "0xUwUi",
+  "homepage": "<REPO_URL>#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+<REPO_URL>.git"
+  },
+  "bugs": {
+    "url": "<REPO_URL>/issues"
+  },
   "exports": {
     "./tui": "./src/tui.tsx"
   },
   "files": [
     "src",
     "README.md",
-    "README.zh-CN.md"
+    "README.zh-CN.md",
+    "LICENSE"
   ],
   "keywords": [
     "opencode",
@@ -36,5 +46,8 @@
     "@types/node": "^24.0.0",
     "solid-js": "^1.9.17",
     "typescript": "^5.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,4 +1,4 @@
-# opencode-session-manager
+# @0xuwui/opencode-session-manager
 
 [English](./README.md) | 简体中文
 
@@ -14,13 +14,13 @@ OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，�
 
 ### 方式一：从插件仓库安装（推荐）
 
-> 发布地址：`<PLUGIN_URL>`（待补充）
+> npm：https://www.npmjs.com/package/@0xuwui/opencode-session-manager
 
 在 `cli.json` 的 `plugins` 里加入包名：
 
 ```json
 {
-  "plugins": ["opencode-session-manager"]
+  "plugins": ["@0xuwui/opencode-session-manager"]
 }
 ```
 
@@ -28,7 +28,7 @@ OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，�
 
 ```json
 {
-  "plugins": ["opencode-session-manager@0.1.0"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.0"]
 }
 ```
 

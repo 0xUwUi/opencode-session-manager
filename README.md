@@ -1,4 +1,4 @@
-# opencode-session-manager
+# @0xuwui/opencode-session-manager
 
 English | [简体中文](./README.zh-CN.md)
 
@@ -14,13 +14,13 @@ This plugin runs only in the terminal TUI, so it is configured in `cli.json`. Th
 
 ### Option 1: install from the plugin registry (recommended)
 
-> Published at: `<PLUGIN_URL>` (to be added)
+> npm: https://www.npmjs.com/package/@0xuwui/opencode-session-manager
 
 Add the package name to `plugins` in `cli.json`:
 
 ```json
 {
-  "plugins": ["opencode-session-manager"]
+  "plugins": ["@0xuwui/opencode-session-manager"]
 }
 ```
 
@@ -28,7 +28,7 @@ To pin a version:
 
 ```json
 {
-  "plugins": ["opencode-session-manager@0.1.0"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.0"]
 }
 ```
 
