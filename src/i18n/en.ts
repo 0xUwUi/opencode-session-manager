@@ -35,6 +35,12 @@ export const en: Messages = {
     empty: "No sessions",
   },
 
+  search: {
+    placeholder: "Search titles and directories",
+    matches: (count) => `${count} ${count === 1 ? "match" : "matches"}`,
+    noMatch: (query) => `No sessions match "${query}"`,
+  },
+
   hints: {
     select: "select",
     open: "open/fold",
@@ -44,6 +50,7 @@ export const en: Messages = {
     delete: "delete",
     deleteGroup: "delete group",
     refresh: "refresh",
+    search: "search",
     language: "language",
     back: "back",
   },
@@ -65,6 +72,9 @@ export const en: Messages = {
     delete: "Delete session",
     deleteGroup: "Delete whole group",
     refresh: "Refresh",
+    search: "Search sessions",
+    finishSearch: "Finish typing, keep the filter",
+    clearSearch: "Clear search",
     language: "Switch language",
     back: "Back",
   },
@@ -90,6 +100,7 @@ export const en: Messages = {
     message: (mode, label, count) =>
       `All ${plural(count, "session")} in the ${mode} group "${label}" will be deleted, including subsessions.`,
     current: "This includes the session you are currently using.",
+    filtered: "Only the sessions matching the current search are included.",
     confirm: (count) => `Delete ${count}`,
     failed: (count) => `Failed to delete ${plural(count, "session")}`,
     done: (label, count) => `Deleted ${plural(count, "session")} in "${label}"`,

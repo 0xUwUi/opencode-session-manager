@@ -28,7 +28,7 @@ To pin a version:
 
 ```json
 {
-  "plugins": ["@0xuwui/opencode-session-manager@0.1.1"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.2"]
 }
 ```
 
@@ -90,10 +90,11 @@ The grouping, the subsession switch and the interface language are saved and reu
 | c | Show or hide subsessions (shown as a tree under their parent) |
 | r | Rename |
 | d | Delete the selected session and its subsessions |
-| D | Delete every session in the selected group |
+| D | Delete every session in the selected group (while searching, only the matching ones) |
 | l | Switch interface language |
+| / or Ctrl+F | Search titles and directories. While typing, ↑↓ still move the selection; Enter keeps the filter, Esc clears it |
 | F5 / R | Refresh |
-| Esc / q | Go back to the page you came from |
+| Esc / q | Clear the search if one is active, otherwise go back to the page you came from |
 
 With the mouse, click a row to select it and click again to open it. Click a grouping name at the top to switch to it, and click `EN | 中文` in the top-right corner to switch language.
 

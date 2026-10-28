@@ -1,12 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { Plugin } from "@opencode/plugin/tui"
-import type { ScrollBoxRenderable } from "@opentui/core"
+import type { InputRenderable, ScrollBoxRenderable } from "@opentui/core"
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import {
   GROUP_MODES,
   buildGroups,
   countWithDescendants,
+  filterSessions,
   flattenRows,
   formatAge,
   groupDeleteTargets,
@@ -84,9 +85,12 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
   const [collapsed, setCollapsed] = createSignal<ReadonlySet<string>>(new Set())
   const [selectedKey, setSelectedKey] = createSignal<string>()
   const [now, setNow] = createSignal(Date.now())
+  const [query, setQuery] = createSignal("")
+  const [searching, setSearching] = createSignal(false)
   let from = props.from
   let lastIndex = 0
   let scroll: ScrollBoxRenderable | undefined
+  let searchInput: InputRenderable | undefined
 
   const refresh = async () => {
     try {
@@ -135,8 +139,13 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     return projectNames().get(id) ?? id
   }
 
+  const searchText = (session: Session) =>
+    `${session.title ?? ""} ${context.ui.format.path(session.location.directory)} ${session.location.directory}`
+  const filtered = createMemo(() => filterSessions(sessions(), query(), searchText, { children: showChildren() }))
+  const isFiltered = () => query().trim() !== ""
+
   const groups = createMemo(() =>
-    buildGroups(sessions(), {
+    buildGroups(filtered(), {
       mode: mode(),
       showChildren: showChildren(),
       now: now(),
@@ -221,6 +230,20 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     persist()
   }
 
+  const startSearch = () => {
+    setSearching(true)
+    searchInput?.focus()
+  }
+  const finishSearch = () => {
+    setSearching(false)
+    searchInput?.blur()
+  }
+  const clearSearch = () => {
+    setQuery("")
+    if (searchInput) searchInput.value = ""
+    finishSearch()
+  }
+
   const setLocale = (next: Locale) => {
     setLocaleSignal(next)
     persist()
@@ -298,6 +321,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
       message: [
         text.message(t().modes[mode()], group.label, total),
         hasCurrent ? text.current : undefined,
+        isFiltered() ? text.filtered : undefined,
         t().remove.irreversible,
       ]
         .filter(Boolean)
@@ -340,7 +364,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     const group = keys.group
     return {
       priority: 100,
-      enabled: () => !busy(),
+      enabled: () => !busy() && !searching(),
       commands: [
         { title: keys.up, group, bind: "up,k", run: () => move(-1) },
         { title: keys.down, group, bind: "down,j", run: () => move(1) },
@@ -365,8 +389,32 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
         { title: keys.delete, group, bind: "d", run: () => void removeOne() },
         { title: keys.deleteGroup, group, bind: "shift+d", run: () => void removeGroup() },
         { title: keys.refresh, group, bind: "f5,shift+r", run: () => void refresh() },
+        { title: keys.search, group, bind: "/,ctrl+f", run: startSearch },
         { title: keys.language, group, bind: "l", run: () => setLocale(nextLocale(locale())) },
-        { title: keys.back, group, bind: "escape,q", run: back },
+        {
+          title: keys.back,
+          group,
+          bind: "escape,q",
+          run: () => (isFiltered() ? clearSearch() : back()),
+        },
+      ],
+    }
+  })
+
+  // While typing, only keys that cannot be text reach the list.
+  context.keymap.layer(() => {
+    const keys = t().keys
+    const group = keys.group
+    return {
+      priority: 100,
+      enabled: () => !busy() && searching(),
+      commands: [
+        { title: keys.up, group, bind: "up", run: () => move(-1) },
+        { title: keys.down, group, bind: "down", run: () => move(1) },
+        { title: keys.pageUp, group, bind: "pageup", run: () => move(-pageSize()) },
+        { title: keys.pageDown, group, bind: "pagedown", run: () => move(pageSize()) },
+        { title: keys.finishSearch, group, bind: "return,tab", run: finishSearch },
+        { title: keys.clearSearch, group, bind: "escape", run: clearSearch },
       ],
     }
   })
@@ -421,9 +469,38 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
         </box>
       </box>
 
+      <Show when={searching() || isFiltered()}>
+        <box flexDirection="row" gap={1} flexShrink={0}>
+          <text wrapMode="none" flexShrink={0} fg={searching() ? theme.text.action.primary.base : theme.text.muted}>
+            /
+          </text>
+          <input
+            ref={(element: InputRenderable) => {
+              searchInput = element
+            }}
+            flexGrow={1}
+            focused={searching()}
+            value={query()}
+            placeholder={t().search.placeholder}
+            onInput={(value: string) => setQuery(value)}
+            onMouseUp={startSearch}
+          />
+          <Show when={isFiltered()}>
+            <text wrapMode="none" flexShrink={0} fg={theme.text.muted}>
+              {t().search.matches(visibleCount())}
+            </text>
+          </Show>
+        </box>
+      </Show>
+
       <Show when={!loading()} fallback={<text fg={theme.text.muted}>{t().status.loading}</text>}>
         <Show when={!error()} fallback={<text fg={theme.text.feedback.error.base}>{t().status.loadFailed(error() ?? "")}</text>}>
-          <Show when={rows().length > 0} fallback={<text fg={theme.text.muted}>{t().status.empty}</text>}>
+          <Show
+            when={rows().length > 0}
+            fallback={
+              <text fg={theme.text.muted}>{isFiltered() ? t().search.noMatch(query().trim()) : t().status.empty}</text>
+            }
+          >
             <scrollbox
               ref={(element: ScrollBoxRenderable) => {
                 scroll = element
@@ -518,6 +595,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
         {hint("r", t().hints.rename)}
         {hint("d", t().hints.delete)}
         {hint("D", t().hints.deleteGroup)}
+        {hint("/", t().hints.search)}
         {hint("F5", t().hints.refresh)}
         {hint("l", t().hints.language)}
         {hint("Esc", t().hints.back)}

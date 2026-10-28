@@ -28,7 +28,7 @@ OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，�
 
 ```json
 {
-  "plugins": ["@0xuwui/opencode-session-manager@0.1.1"]
+  "plugins": ["@0xuwui/opencode-session-manager@0.1.2"]
 }
 ```
 
@@ -90,10 +90,11 @@ npm run build
 | c | 显示/隐藏子 session（显示时以树状结构挂在父 session 下） |
 | r | 重命名 |
 | d | 删除选中的 session（连同它的子 session） |
-| D | 删除选中项所在分类下的全部 session |
+| D | 删除选中项所在分类下的全部 session（搜索时只删匹配的） |
 | l | 切换界面语言 |
+| / 或 Ctrl+F | 搜索标题和目录。输入时 ↑↓ 仍可移动选中项；Enter 保留筛选结果，Esc 清除搜索 |
 | F5 / R | 刷新 |
-| Esc / q | 返回打开前的页面 |
+| Esc / q | 有搜索时清除搜索，否则返回打开前的页面 |
 
 鼠标单击选中，再次单击打开；点击顶部分类名可直接切换分类，点击右上角的 `EN | 中文` 切换语言。
 

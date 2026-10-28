@@ -26,6 +26,12 @@ export interface Messages {
     readonly empty: string
   }
 
+  readonly search: {
+    readonly placeholder: string
+    readonly matches: (count: number) => string
+    readonly noMatch: (query: string) => string
+  }
+
   readonly hints: {
     readonly select: string
     readonly open: string
@@ -35,6 +41,7 @@ export interface Messages {
     readonly delete: string
     readonly deleteGroup: string
     readonly refresh: string
+    readonly search: string
     readonly language: string
     readonly back: string
   }
@@ -56,6 +63,9 @@ export interface Messages {
     readonly delete: string
     readonly deleteGroup: string
     readonly refresh: string
+    readonly search: string
+    readonly finishSearch: string
+    readonly clearSearch: string
     readonly language: string
     readonly back: string
   }
@@ -80,6 +90,7 @@ export interface Messages {
     readonly title: (label: string) => string
     readonly message: (mode: string, label: string, count: number) => string
     readonly current: string
+    readonly filtered: string
     readonly confirm: (count: number) => string
     readonly failed: (count: number) => string
     readonly done: (label: string, count: number) => string

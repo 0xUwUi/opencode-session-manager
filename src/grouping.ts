@@ -166,6 +166,38 @@ export function flattenRows<S extends SessionLike>(groups: readonly Group<S>[], 
   return rows
 }
 
+/**
+ * Sessions matching every whitespace-separated term of `query` (case-insensitive).
+ * With `children` (the default) a matching subsession keeps its ancestors so the tree stays intact;
+ * without it only top-level sessions are searched, because subsessions are not displayed.
+ */
+export function filterSessions<S extends SessionLike>(
+  sessions: readonly S[],
+  query: string,
+  text: (session: S) => string,
+  options: { readonly children?: boolean } = {},
+): readonly S[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (terms.length === 0) return sessions
+  const byID = new Map(sessions.map((session) => [session.id, session]))
+  const isRoot = (session: S) => !session.parentID || !byID.has(session.parentID)
+  const matches = (session: S) => {
+    const haystack = text(session).toLowerCase()
+    return terms.every((term) => haystack.includes(term))
+  }
+  const keep = new Set<string>()
+  for (const session of sessions) {
+    if (options.children === false && !isRoot(session)) continue
+    if (!matches(session)) continue
+    let cursor: S | undefined = session
+    while (cursor && !keep.has(cursor.id)) {
+      keep.add(cursor.id)
+      cursor = cursor.parentID ? byID.get(cursor.parentID) : undefined
+    }
+  }
+  return sessions.filter((session) => keep.has(session.id))
+}
+
 /** Sessions to delete for a group: only roots, because the server deletes child sessions with their parent. */
 export function groupDeleteTargets(group: Group, all: readonly SessionLike[]): { ids: string[]; total: number } {
   const ids = group.roots.map((node) => node.session.id)

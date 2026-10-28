@@ -1,6 +1,6 @@
 {
   "name": "@0xuwui/opencode-session-manager",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OpenCode TUI plugin for browsing, grouping, renaming and deleting sessions",
   "type": "module",
   "license": "MIT",

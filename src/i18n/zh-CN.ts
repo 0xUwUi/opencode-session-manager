@@ -33,6 +33,12 @@ export const zhCN: Messages = {
     empty: "没有 session",
   },
 
+  search: {
+    placeholder: "搜索标题和目录",
+    matches: (count) => `${count} 个匹配`,
+    noMatch: (query) => `没有匹配“${query}”的 session`,
+  },
+
   hints: {
     select: "选择",
     open: "打开/折叠",
@@ -42,6 +48,7 @@ export const zhCN: Messages = {
     delete: "删除",
     deleteGroup: "删除分类",
     refresh: "刷新",
+    search: "搜索",
     language: "语言",
     back: "返回",
   },
@@ -63,6 +70,9 @@ export const zhCN: Messages = {
     delete: "删除 session",
     deleteGroup: "删除整个分类",
     refresh: "刷新",
+    search: "搜索 session",
+    finishSearch: "结束输入，保留筛选",
+    clearSearch: "清除搜索",
     language: "切换语言",
     back: "返回",
   },
@@ -87,6 +97,7 @@ export const zhCN: Messages = {
     title: (label) => `删除分类「${label}」`,
     message: (mode, label, count) => `将删除「${mode}」分类「${label}」下的全部 ${count} 个 session（含子 session）。`,
     current: "其中包含当前正在使用的 session。",
+    filtered: "只包含符合当前搜索条件的 session。",
     confirm: (count) => `删除 ${count} 个`,
     failed: (count) => `${count} 个 session 删除失败`,
     done: (label, count) => `已删除分类「${label}」下的 ${count} 个 session`,
