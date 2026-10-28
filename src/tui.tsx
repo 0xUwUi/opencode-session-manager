@@ -20,8 +20,8 @@ export default Plugin.define({
       commands: [
         {
           id: "session-manager.open",
-          title: "Session 管理",
-          description: "按目录、项目、时间分类管理全部 session",
+          title: "Session Manager",
+          description: "Browse, rename and delete sessions grouped by directory, project or time",
           group: "Session",
           palette: true,
           slash: { name: "session-manager", aliases: ["sm"] },

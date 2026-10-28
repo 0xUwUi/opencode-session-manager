@@ -2,25 +2,9 @@ export type GroupMode = "directory" | "project" | "created" | "updated" | "viewe
 
 export const GROUP_MODES: readonly GroupMode[] = ["directory", "project", "created", "updated", "viewed"]
 
-export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
-  directory: "目录",
-  project: "项目",
-  created: "创建时间",
-  updated: "最后更新",
-  viewed: "最后查看",
-}
-
 export type TimeBucket = "today" | "yesterday" | "week" | "month" | "earlier"
 
-const BUCKETS: readonly TimeBucket[] = ["today", "yesterday", "week", "month", "earlier"]
-
-const BUCKET_LABELS: Record<TimeBucket, string> = {
-  today: "今天",
-  yesterday: "昨天",
-  week: "最近 7 天",
-  month: "最近 30 天",
-  earlier: "更早",
-}
+export const TIME_BUCKETS: readonly TimeBucket[] = ["today", "yesterday", "week", "month", "earlier"]
 
 export interface SessionLike {
   readonly id: string
@@ -60,19 +44,27 @@ export interface GroupOptions {
   readonly now: number
   readonly projectLabel?: (projectID: string) => string
   readonly directoryLabel?: (directory: string) => string
+  readonly bucketLabel?: (bucket: TimeBucket) => string
 }
 
 const DAY = 24 * 60 * 60 * 1000
 
-export function formatAge(time: number, now: number): string {
+export interface AgeLabels {
+  readonly now: string
+  readonly minutes: (count: number) => string
+  readonly hours: (count: number) => string
+  readonly days: (count: number) => string
+}
+
+export function formatAge(time: number, now: number, labels: AgeLabels): string {
   const diff = Math.max(0, now - time)
   const minutes = Math.floor(diff / 60_000)
-  if (minutes < 1) return "刚刚"
-  if (minutes < 60) return `${minutes} 分钟前`
+  if (minutes < 1) return labels.now
+  if (minutes < 60) return labels.minutes(minutes)
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小时前`
+  if (hours < 24) return labels.hours(hours)
   const days = Math.floor(hours / 24)
-  if (days < 30) return `${days} 天前`
+  if (days < 30) return labels.days(days)
   const date = new Date(time)
   const pad = (value: number) => String(value).padStart(2, "0")
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -113,7 +105,7 @@ function groupLabel(key: string, options: GroupOptions): string {
     case "project":
       return options.projectLabel?.(key) ?? key
     default:
-      return BUCKET_LABELS[key as TimeBucket]
+      return options.bucketLabel?.(key as TimeBucket) ?? key
   }
 }
 
@@ -154,7 +146,7 @@ export function buildGroups<S extends SessionLike>(sessions: readonly S[], optio
     const latest = (group: Group<S>) => Math.max(...group.roots.map((node) => node.session.time.updated))
     return groups.sort((a, b) => latest(b) - latest(a))
   }
-  return groups.sort((a, b) => BUCKETS.indexOf(a.key as TimeBucket) - BUCKETS.indexOf(b.key as TimeBucket))
+  return groups.sort((a, b) => TIME_BUCKETS.indexOf(a.key as TimeBucket) - TIME_BUCKETS.indexOf(b.key as TimeBucket))
 }
 
 export function flattenRows<S extends SessionLike>(groups: readonly Group<S>[], collapsed: ReadonlySet<string>): Row<S>[] {

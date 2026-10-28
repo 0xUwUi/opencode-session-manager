@@ -1,55 +1,126 @@
 # opencode-session-manager
 
-OpenCode v2 TUI 插件：在一个全屏页面里分类浏览全部 session，支持重命名、删除单个 session、删除整个分类。
+English | [简体中文](./README.zh-CN.md)
 
-## 安装
+A TUI plugin for OpenCode v2. It opens a full-screen page that lists all of your sessions grouped by directory, project or time, and lets you rename a session, delete a session, or delete every session in a group. The interface is available in English and Simplified Chinese. English is the default.
 
-把插件目录加到 `~/.config/opencode/cli.json`：
+## Requirements
+
+- OpenCode v2.2.0 or later (terminal TUI)
+
+## Installation
+
+This plugin runs only in the terminal TUI, so it is configured in `cli.json`. The default location on Linux and macOS is `~/.config/opencode/cli.json`.
+
+### Option 1: install from the plugin registry (recommended)
+
+> Published at: `<PLUGIN_URL>` (to be added)
+
+Add the package name to `plugins` in `cli.json`:
 
 ```json
 {
-  "plugins": ["/home/user/codes/opencode/session-manager"]
+  "plugins": ["opencode-session-manager"]
 }
 ```
 
-重启 TUI 后输入 `/session-manager`（别名 `/sm`），或在命令面板（Ctrl+P）里选择「Session 管理」。
+To pin a version:
 
-## 分类方式
+```json
+{
+  "plugins": ["opencode-session-manager@0.1.0"]
+}
+```
 
-| 分类 | 依据 |
+Save the file and restart the OpenCode TUI.
+
+### Option 2: install from source
+
+```sh
+git clone <REPO_URL> ~/opencode-plugins/session-manager
+```
+
+Then add the absolute path of the plugin directory to `plugins` in `cli.json`:
+
+```json
+{
+  "plugins": ["/home/<your-user>/opencode-plugins/session-manager"]
+}
+```
+
+Save the file and restart the OpenCode TUI.
+
+### Check the installation
+
+Type `/sm` in the prompt. If `/sm` and `/session-manager` appear in the completion list, the plugin is loaded.
+
+### Disable or uninstall
+
+- To disable it temporarily, add `"-session-manager"` to `plugins` after the plugin's entry (entries are processed in order).
+- To uninstall, remove its entry from `plugins` and restart. The plugin's settings are stored in OpenCode's TUI state directory (`~/.local/state/opencode/.../tui/plugin.session-manager.settings.json`); you can delete that file too.
+
+## Usage
+
+Run `/session-manager` (alias `/sm`), or pick **Session Manager** in the command palette (Ctrl+P).
+
+### Grouping
+
+| Group by | Based on |
 | --- | --- |
-| 目录 | session 的工作目录 |
-| 项目 | `projectID`，同一个 git 仓库（含子目录和 worktree）归为一类；非仓库目录归入「无仓库 (global)」 |
-| 创建时间 | 今天 / 昨天 / 最近 7 天 / 最近 30 天 / 更早 |
-| 最后更新 | 同上，按 session 内容最后变化的时间 |
-| 最后查看 | 同上，按最后一次打开查看的时间，没有记录时用最后更新时间 |
+| Directory | The session's working directory |
+| Project | `projectID`. Sessions in the same git repository, including its subdirectories and worktrees, share a group. Sessions outside a repository go to "No repository (global)". |
+| Created | Today / Yesterday / Last 7 days / Last 30 days / Earlier |
+| Updated | Same buckets, by the last time the session's content changed |
+| Viewed | Same buckets, by the last time the session was opened. Sessions never opened use their update time. |
 
-分类方式和子 session 开关会保存，下次打开沿用。
+The grouping, the subsession switch and the interface language are saved and reused next time.
 
-## 快捷键
+### Keys
 
-| 按键 | 作用 |
+| Key | Action |
 | --- | --- |
-| ↑ ↓ / j k | 选择 |
-| PgUp PgDn / g G | 翻页 / 跳到首尾 |
-| Enter | 打开 session；在分组标题上折叠/展开 |
-| Space | 折叠/展开当前分组 |
-| Tab / Shift+Tab | 切换分类方式 |
-| c | 显示/隐藏子 session（显示时以树状结构挂在父 session 下） |
-| r | 重命名 |
-| d | 删除选中的 session（连同它的子 session） |
-| D | 删除选中项所在分类下的全部 session |
-| F5 / R | 刷新 |
-| Esc / q | 返回打开前的页面 |
+| ↑ ↓ / j k | Move selection |
+| PgUp PgDn / g G | Page up and down / jump to first or last |
+| Enter | Open the session; on a group header, fold or unfold it |
+| Space | Fold or unfold the current group |
+| Tab / Shift+Tab | Change grouping |
+| c | Show or hide subsessions (shown as a tree under their parent) |
+| r | Rename |
+| d | Delete the selected session and its subsessions |
+| D | Delete every session in the selected group |
+| l | Switch interface language |
+| F5 / R | Refresh |
+| Esc / q | Go back to the page you came from |
 
-鼠标单击选中，再次单击打开；点击顶部分类名可直接切换。
+With the mouse, click a row to select it and click again to open it. Click a grouping name at the top to switch to it, and click `EN | 中文` in the top-right corner to switch language.
 
-删除前都会确认，并显示会删除的数量（含子 session）。当前正在使用的 session 也可以删除，删除后它的标签页会被关闭。删除不可恢复。
+Every delete asks for confirmation and shows how many sessions will be removed, including subsessions. You can delete the session you are currently using; its tab is closed afterwards. Deleted sessions cannot be recovered.
 
-## 开发
+## Adding a language
+
+All interface text lives in `src/i18n/`:
+
+1. Copy `src/i18n/en.ts` to a new file, for example `src/i18n/ja.ts`. Export a `Messages` object and translate every string. The type checker reports any missing field.
+2. Register it in `LOCALES` in `src/i18n/index.ts`: `ja: { label: "日本語", name: "日本語", messages: ja }`. `label` is what the language switch in the top-right corner shows.
+3. Run `npm run typecheck` and `npm test`.
+
+The slash command and the command palette (Ctrl+P) entry always use English.
+
+## Development
 
 ```sh
 npm install
-npm test        # 分组逻辑单元测试
-npm run typecheck
+npm test           # unit tests
+npm run typecheck  # type check
 ```
+
+Layout:
+
+- `src/tui.tsx`: plugin entry; registers the command and the page
+- `src/panel.tsx`: the manager page
+- `src/grouping.ts`: grouping and tree logic, no UI dependencies
+- `src/i18n/`: language packs
+
+## License
+
+MIT

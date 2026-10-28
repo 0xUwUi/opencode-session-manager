@@ -9,7 +9,8 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md"
   ],
   "keywords": [
     "opencode",

@@ -5,7 +5,6 @@ import type { ScrollBoxRenderable } from "@opentui/core"
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import {
   GROUP_MODES,
-  GROUP_MODE_LABELS,
   buildGroups,
   countWithDescendants,
   flattenRows,
@@ -15,6 +14,7 @@ import {
   type GroupMode,
   type Row,
 } from "./grouping.ts"
+import { DEFAULT_LOCALE, LOCALES, LOCALE_CODES, isLocale, messages, nextLocale, type Locale } from "./i18n/index.ts"
 
 type Context = Plugin.Context
 export type Session = Awaited<ReturnType<Context["client"]["session"]["list"]>>["data"][number]
@@ -22,10 +22,11 @@ export type Session = Awaited<ReturnType<Context["client"]["session"]["list"]>>[
 export interface Settings {
   mode: GroupMode
   showChildren: boolean
+  locale: Locale
 }
 
 export const SETTINGS_KEY = "settings"
-export const DEFAULT_SETTINGS: Settings = { mode: "directory", showChildren: false }
+export const DEFAULT_SETTINGS: Settings = { mode: "directory", showChildren: false, locale: DEFAULT_LOCALE }
 
 const PAGE_SIZE = 200
 const ROW_ID_PREFIX = "session-manager-row-"
@@ -60,6 +61,8 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     GROUP_MODES.includes(settings.mode) ? settings.mode : DEFAULT_SETTINGS.mode,
   )
   const [showChildren, setShowChildren] = createSignal(settings.showChildren === true)
+  const [locale, setLocaleSignal] = createSignal<Locale>(isLocale(settings.locale) ? settings.locale : DEFAULT_LOCALE)
+  const t = () => messages(locale())
   // Overlapping store updates can drop writes, so run them one at a time with the latest values.
   let saving: Promise<void> = Promise.resolve()
   const persist = () => {
@@ -68,6 +71,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
         updateSettings((draft) => {
           draft.mode = mode()
           draft.showChildren = showChildren()
+          draft.locale = locale()
         }),
       )
       .catch(() => undefined)
@@ -127,7 +131,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
   })
 
   const projectLabel = (id: string) => {
-    if (id === "global") return "无仓库 (global)"
+    if (id === "global") return t().noProject
     return projectNames().get(id) ?? id
   }
 
@@ -138,6 +142,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
       now: now(),
       projectLabel,
       directoryLabel: (directory) => context.ui.format.path(directory),
+      bucketLabel: (bucket) => t().buckets[bucket],
     }),
   )
   const rows = createMemo(() => flattenRows(groups(), collapsed()))
@@ -216,6 +221,11 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     persist()
   }
 
+  const setLocale = (next: Locale) => {
+    setLocaleSignal(next)
+    persist()
+  }
+
   const forgetDeleted = (ids: readonly string[]) => {
     const removed = new Set<string>()
     const children = new Map<string, string[]>()
@@ -237,7 +247,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     const row = selected()
     if (row?.type !== "session") return
     const value = await context.ui.dialog.prompt({
-      title: "重命名 session",
+      title: t().rename.title,
       description: context.ui.format.path(row.session.location.directory),
       value: row.session.title ?? "",
     })
@@ -245,19 +255,25 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     if (!title || title === row.session.title) return
     await context.client.session.update({ sessionID: row.session.id, title })
     setSessions(sessions().map((session) => (session.id === row.session.id ? { ...session, title } : session)))
-    context.ui.toast.show({ message: `已重命名为「${title}」`, variant: "success" })
+    context.ui.toast.show({ message: t().rename.done(title), variant: "success" })
   })
 
   const removeOne = guarded(async () => {
     const row = selected()
     if (row?.type !== "session") return
     const total = countWithDescendants([row.session.id], sessions())
-    const extra = total > 1 ? `\n它的 ${total - 1} 个子 session 也会一起删除。` : ""
-    const current = row.session.id === from ? "\n这是当前正在使用的 session。" : ""
+    const text = t().remove
     const confirmed = await context.ui.dialog.confirm({
-      title: "删除 session",
-      message: `删除「${titleOf(row.session)}」？${extra}${current}\n此操作不可恢复。`,
-      label: { confirm: "删除", cancel: "取消" },
+      title: text.title,
+      message: [
+        text.message(titleOf(row.session)),
+        total > 1 ? text.children(total - 1) : undefined,
+        row.session.id === from ? text.current : undefined,
+        text.irreversible,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      label: { confirm: text.confirm, cancel: text.cancel },
     })
     if (!confirmed) return
     try {
@@ -266,7 +282,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
       if (!isNotFound(cause)) throw cause
     }
     forgetDeleted([row.session.id])
-    context.ui.toast.show({ message: `已删除 ${total} 个 session`, variant: "success" })
+    context.ui.toast.show({ message: t().remove.done(total), variant: "success" })
   })
 
   const removeGroup = guarded(async () => {
@@ -276,13 +292,17 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     const { ids, total } = groupDeleteTargets(group, sessions())
     if (ids.length === 0) return
     const hasCurrent = from !== undefined && containsSession(ids, from)
+    const text = t().removeGroup
     const confirmed = await context.ui.dialog.confirm({
-      title: `删除分类「${group.label}」`,
-      message:
-        `将删除「${GROUP_MODE_LABELS[mode()]}」分类「${group.label}」下的全部 ${total} 个 session（含子 session）。` +
-        (hasCurrent ? "\n其中包含当前正在使用的 session。" : "") +
-        "\n此操作不可恢复。",
-      label: { confirm: `删除 ${total} 个`, cancel: "取消" },
+      title: text.title(group.label),
+      message: [
+        text.message(t().modes[mode()], group.label, total),
+        hasCurrent ? text.current : undefined,
+        t().remove.irreversible,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      label: { confirm: text.confirm(total), cancel: t().remove.cancel },
     })
     if (!confirmed) return
     const done: string[] = []
@@ -298,9 +318,9 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     }
     forgetDeleted(done)
     if (failed.length > 0) {
-      context.ui.toast.show({ message: `${failed.length} 个 session 删除失败`, variant: "error" })
+      context.ui.toast.show({ message: t().removeGroup.failed(failed.length), variant: "error" })
     } else {
-      context.ui.toast.show({ message: `已删除分类「${group.label}」下的 ${total} 个 session`, variant: "success" })
+      context.ui.toast.show({ message: t().removeGroup.done(group.label, total), variant: "success" })
     }
     scheduleRefresh()
   })
@@ -315,36 +335,41 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     return false
   }
 
-  context.keymap.layer(() => ({
-    priority: 100,
-    enabled: () => !busy(),
-    commands: [
-      { title: "上一项", group: "Session 管理", bind: "up,k", run: () => move(-1) },
-      { title: "下一项", group: "Session 管理", bind: "down,j", run: () => move(1) },
-      { title: "上一页", group: "Session 管理", bind: "pageup", run: () => move(-pageSize()) },
-      { title: "下一页", group: "Session 管理", bind: "pagedown", run: () => move(pageSize()) },
-      { title: "第一项", group: "Session 管理", bind: "home,g", run: () => select(0) },
-      { title: "最后一项", group: "Session 管理", bind: "end,shift+g", run: () => select(rows().length - 1) },
-      { title: "打开 / 折叠", group: "Session 管理", bind: "return", run: activate },
-      {
-        title: "折叠分组",
-        group: "Session 管理",
-        bind: "space",
-        run: () => {
-          const row = selected()
-          if (row) toggleCollapse(row.group.key)
+  context.keymap.layer(() => {
+    const keys = t().keys
+    const group = keys.group
+    return {
+      priority: 100,
+      enabled: () => !busy(),
+      commands: [
+        { title: keys.up, group, bind: "up,k", run: () => move(-1) },
+        { title: keys.down, group, bind: "down,j", run: () => move(1) },
+        { title: keys.pageUp, group, bind: "pageup", run: () => move(-pageSize()) },
+        { title: keys.pageDown, group, bind: "pagedown", run: () => move(pageSize()) },
+        { title: keys.first, group, bind: "home,g", run: () => select(0) },
+        { title: keys.last, group, bind: "end,shift+g", run: () => select(rows().length - 1) },
+        { title: keys.open, group, bind: "return", run: activate },
+        {
+          title: keys.collapse,
+          group,
+          bind: "space",
+          run: () => {
+            const row = selected()
+            if (row) toggleCollapse(row.group.key)
+          },
         },
-      },
-      { title: "下一种分类", group: "Session 管理", bind: "tab", run: () => cycleMode(1) },
-      { title: "上一种分类", group: "Session 管理", bind: "shift+tab", run: () => cycleMode(-1) },
-      { title: "显示 / 隐藏子 session", group: "Session 管理", bind: "c", run: toggleChildren },
-      { title: "重命名", group: "Session 管理", bind: "r", run: () => void rename() },
-      { title: "删除 session", group: "Session 管理", bind: "d", run: () => void removeOne() },
-      { title: "删除整个分类", group: "Session 管理", bind: "shift+d", run: () => void removeGroup() },
-      { title: "刷新", group: "Session 管理", bind: "f5,shift+r", run: () => void refresh() },
-      { title: "返回", group: "Session 管理", bind: "escape,q", run: back },
-    ],
-  }))
+        { title: keys.nextMode, group, bind: "tab", run: () => cycleMode(1) },
+        { title: keys.previousMode, group, bind: "shift+tab", run: () => cycleMode(-1) },
+        { title: keys.children, group, bind: "c", run: toggleChildren },
+        { title: keys.rename, group, bind: "r", run: () => void rename() },
+        { title: keys.delete, group, bind: "d", run: () => void removeOne() },
+        { title: keys.deleteGroup, group, bind: "shift+d", run: () => void removeGroup() },
+        { title: keys.refresh, group, bind: "f5,shift+r", run: () => void refresh() },
+        { title: keys.language, group, bind: "l", run: () => setLocale(nextLocale(locale())) },
+        { title: keys.back, group, bind: "escape,q", run: back },
+      ],
+    }
+  })
 
   const hint = (key: string, label: string) => (
     <text wrapMode="none" flexShrink={0}>
@@ -357,7 +382,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
     <box flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1} gap={1}>
       <box flexDirection="row" gap={2} flexShrink={0}>
         <text fg={theme.text.base} wrapMode="none" flexShrink={0}>
-          <b>Session 管理</b>
+          <b>{t().title}</b>
         </text>
         <box flexDirection="row" gap={1} flexShrink={1} minWidth={0}>
           <For each={GROUP_MODES}>
@@ -368,20 +393,37 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
                 fg={item === mode() ? theme.text.action.primary.base : theme.text.muted}
                 onMouseUp={() => setMode(item)}
               >
-                {item === mode() ? `[${GROUP_MODE_LABELS[item]}]` : ` ${GROUP_MODE_LABELS[item]} `}
+                {item === mode() ? `[${t().modes[item]}]` : ` ${t().modes[item]} `}
               </text>
             )}
           </For>
         </box>
         <box flexGrow={1} />
         <text wrapMode="none" flexShrink={0} fg={theme.text.muted} onMouseUp={toggleChildren}>
-          子 session: {showChildren() ? "显示" : "隐藏"} · 共 {visibleCount()} 个
+          {t().status.children(showChildren())} · {t().status.total(visibleCount())}
         </text>
+        <box flexDirection="row" flexShrink={0}>
+          <For each={LOCALE_CODES}>
+            {(code, position) => (
+              <text
+                wrapMode="none"
+                flexShrink={0}
+                fg={code === locale() ? theme.text.action.primary.base : theme.text.muted}
+                onMouseUp={() => setLocale(code)}
+              >
+                <Show when={position() > 0}>
+                  <span style={{ fg: theme.text.faint }}> | </span>
+                </Show>
+                {code === locale() ? <b>{LOCALES[code].label}</b> : LOCALES[code].label}
+              </text>
+            )}
+          </For>
+        </box>
       </box>
 
-      <Show when={!loading()} fallback={<text fg={theme.text.muted}>加载中…</text>}>
-        <Show when={!error()} fallback={<text fg={theme.text.feedback.error.base}>加载失败：{error()}</text>}>
-          <Show when={rows().length > 0} fallback={<text fg={theme.text.muted}>没有 session</text>}>
+      <Show when={!loading()} fallback={<text fg={theme.text.muted}>{t().status.loading}</text>}>
+        <Show when={!error()} fallback={<text fg={theme.text.feedback.error.base}>{t().status.loadFailed(error() ?? "")}</text>}>
+          <Show when={rows().length > 0} fallback={<text fg={theme.text.muted}>{t().status.empty}</text>}>
             <scrollbox
               ref={(element: ScrollBoxRenderable) => {
                 scroll = element
@@ -419,7 +461,7 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
                   const session = row.session
                   const isFrom = () => session.id === from
                   const running = () => context.data.session.status(session.id) === "running"
-                  const age = () => formatAge(sortTime(session, mode() === "directory" || mode() === "project" ? "updated" : mode()), now())
+                  const age = () => formatAge(sortTime(session, mode() === "directory" || mode() === "project" ? "updated" : mode()), now(), t().age)
                   return (
                     <box
                       id={`${ROW_ID_PREFIX}${rowIndex()}`}
@@ -469,15 +511,16 @@ export function SessionManagerPage(props: { context: Context; from?: string }) {
       </Show>
 
       <box flexDirection="row" gap={2} flexShrink={0} flexWrap="wrap">
-        {hint("↑↓", "选择")}
-        {hint("Enter", "打开/折叠")}
-        {hint("Tab", "切换分类")}
-        {hint("c", "子 session")}
-        {hint("r", "重命名")}
-        {hint("d", "删除")}
-        {hint("D", "删除分类")}
-        {hint("F5", "刷新")}
-        {hint("Esc", "返回")}
+        {hint("↑↓", t().hints.select)}
+        {hint("Enter", t().hints.open)}
+        {hint("Tab", t().hints.mode)}
+        {hint("c", t().hints.children)}
+        {hint("r", t().hints.rename)}
+        {hint("d", t().hints.delete)}
+        {hint("D", t().hints.deleteGroup)}
+        {hint("F5", t().hints.refresh)}
+        {hint("l", t().hints.language)}
+        {hint("Esc", t().hints.back)}
       </box>
     </box>
   )
